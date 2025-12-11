@@ -35,6 +35,8 @@ public:
     void handle(const uint8_t* request_bytes, std::size_t request_size);
 
 protected:
+    bool has_write_auth { false };
+
     virtual void initial_parse(const std::string& query) = 0;
 
     // is supposed to be called after initial_parse
@@ -54,6 +56,8 @@ protected:
     void handle_catalog();
 
     void handle_cancel();
+
+    void handle_auth();
 
     static inline DurationMS get_duration(std::chrono::system_clock::time_point start)
     {

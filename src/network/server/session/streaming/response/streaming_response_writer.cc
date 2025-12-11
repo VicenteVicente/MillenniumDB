@@ -124,6 +124,18 @@ void StreamingResponseWriter::write_cancel_success()
     seal();
 }
 
+void StreamingResponseWriter::write_auth_success()
+{
+    write_map_header(2UL);
+    write_typed_string("type", Protocol::DataType::STRING);
+    write_uint8(static_cast<uint8_t>(Protocol::ResponseType::SUCCESS));
+
+    write_typed_string("payload", Protocol::DataType::STRING);
+    write_null();
+
+    seal();
+}
+
 void StreamingResponseWriter::write_record(const std::vector<VarId>& projection_vars, const Binding& binding)
 {
     write_map_header(2UL);

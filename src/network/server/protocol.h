@@ -153,6 +153,12 @@ inline std::string request_type_to_string(const RequestType& request_type) {
         return "CATALOG";
     case RequestType::CANCEL:
         return "CANCEL";
+    case RequestType::UPDATE:
+        return "UPDATE";
+    case RequestType::AUTH:
+        return "AUTH";
+    case RequestType::INVALID:
+        return "INVALID";
     default:
         const auto ch = std::to_string(static_cast<uint8_t>(request_type));
         return "UNKNOWN_REQUEST_TYPE (" + ch + ")";

@@ -92,6 +92,7 @@ public:
     );
     void write_catalog_success();
     void write_cancel_success();
+    void write_auth_success();
     void write_record(const std::vector<VarId>& projection_vars, const Binding& binding);
     void write_error(const std::string& message);
 
