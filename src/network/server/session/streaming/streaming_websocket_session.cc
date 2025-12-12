@@ -1,5 +1,7 @@
 #include "streaming_websocket_session.h"
 
+#include <boost/beast/ssl/ssl_stream.hpp>
+
 #include "misc/logger.h"
 #include "network/exceptions.h"
 #include "network/server/protocol.h"
@@ -13,9 +15,10 @@ using namespace boost;
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
 
-StreamingWebSocketSession::StreamingWebSocketSession(
+template <typename Stream>
+StreamingWebSocketSession<Stream>::StreamingWebSocketSession(
     Server& server_,
-    websocket_stream_type&& stream_,
+    ws_t&& stream_,
     std::chrono::seconds query_timeout_,
     bool write_authorized
 ) :
@@ -39,7 +42,8 @@ StreamingWebSocketSession::StreamingWebSocketSession(
     stream.set_option(websocket::stream_base::timeout::suggested(beast::role_type::server));
 }
 
-StreamingWebSocketSession::~StreamingWebSocketSession()
+template <typename Stream>
+StreamingWebSocketSession<Stream>::~StreamingWebSocketSession()
 {
     if (stream.is_open()) {
         stream.close(websocket::close_code::normal, ec);
@@ -50,7 +54,8 @@ StreamingWebSocketSession::~StreamingWebSocketSession()
     }
 }
 
-void StreamingWebSocketSession::start_decode_chunk()
+template <typename Stream>
+void StreamingWebSocketSession<Stream>::start_decode_chunk()
 {
     decoded_chunks.clear();
 
@@ -69,7 +74,8 @@ void StreamingWebSocketSession::start_decode_chunk()
     });
 }
 
-void StreamingWebSocketSession::decode_chunk(std::size_t chunk_size)
+template <typename Stream>
+void StreamingWebSocketSession<Stream>::decode_chunk(std::size_t chunk_size)
 {
     if (decoded_chunks.size() + chunk_size > Protocol::MAX_REQUEST_BYTES) {
         // max request size reached
@@ -125,14 +131,16 @@ void StreamingWebSocketSession::decode_chunk(std::size_t chunk_size)
     });
 }
 
-void StreamingWebSocketSession::run()
+template <typename Stream>
+void StreamingWebSocketSession<Stream>::run()
 {
     if (stream.is_open()) {
         start_decode_chunk();
     }
 }
 
-void StreamingWebSocketSession::write(const uint8_t* bytes, std::size_t num_bytes)
+template <typename Stream>
+void StreamingWebSocketSession<Stream>::write(const uint8_t* bytes, std::size_t num_bytes)
 {
     stream.write(boost::asio::buffer(bytes, num_bytes), ec);
 
@@ -142,23 +150,27 @@ void StreamingWebSocketSession::write(const uint8_t* bytes, std::size_t num_byte
     }
 }
 
-std::mutex& StreamingWebSocketSession::get_thread_info_vec_mutex()
+template <typename Stream>
+std::mutex& StreamingWebSocketSession<Stream>::get_thread_info_vec_mutex()
 {
     return server.thread_info_vec_mutex;
 }
 
-std::chrono::seconds StreamingWebSocketSession::get_timeout()
+template<typename Stream>
+std::chrono::seconds StreamingWebSocketSession<Stream>::get_timeout()
 {
     return query_timeout;
 }
 
-bool StreamingWebSocketSession::try_cancel(uint_fast32_t worker_idx, const std::string& cancel_token)
+template<typename Stream>
+bool StreamingWebSocketSession<Stream>::try_cancel(uint_fast32_t worker_idx, const std::string& cancel_token)
 {
     return server.try_cancel(worker_idx, cancel_token);
 }
 
+template<typename Stream>
 template<typename OnRead>
-void StreamingWebSocketSession::async_read_nbytes(std::size_t n, OnRead&& on_read)
+void StreamingWebSocketSession<Stream>::async_read_nbytes(std::size_t n, OnRead&& on_read)
 {
     if (request_buffer.size() >= n) {
         // enough data
@@ -187,7 +199,8 @@ void StreamingWebSocketSession::async_read_nbytes(std::size_t n, OnRead&& on_rea
     );
 }
 
-void StreamingWebSocketSession::close_with_error(const std::string& msg)
+template <typename Stream>
+void StreamingWebSocketSession<Stream>::close_with_error(const std::string& msg)
 {
     logger(Category::Error) << msg;
     request_handler->response_writer->write_error(msg);
@@ -198,3 +211,6 @@ void StreamingWebSocketSession::close_with_error(const std::string& msg)
         logger(Category::Error) << "Close failed:" << ec.what();
     }
 }
+
+template class MDBServer::StreamingWebSocketSession<beast::tcp_stream>;
+template class MDBServer::StreamingWebSocketSession<beast::ssl_stream<boost::asio::ip::tcp::socket>>;

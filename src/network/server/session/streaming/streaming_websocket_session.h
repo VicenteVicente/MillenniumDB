@@ -11,14 +11,15 @@ namespace MDBServer {
 
 class Server;
 
-class StreamingWebSocketSession : public StreamingSession, public std::enable_shared_from_this<StreamingWebSocketSession> {
-    using websocket_stream_type = boost::beast::websocket::stream<boost::beast::tcp_stream>;
-
+template <typename Stream>
+class StreamingWebSocketSession : public StreamingSession, public std::enable_shared_from_this<StreamingWebSocketSession<Stream>> {
 public:
-    explicit StreamingWebSocketSession(Server&                 server,
-                                       websocket_stream_type&& stream,
-                                       std::chrono::seconds    query_timeout,
-                                       bool write_authorized);
+    using ws_t = boost::beast::websocket::stream<Stream>;
+
+    explicit StreamingWebSocketSession(Server&              server,
+                                       ws_t&&             stream,
+                                       std::chrono::seconds query_timeout,
+                                       bool                 write_authorized);
 
     ~StreamingWebSocketSession();
 
@@ -37,7 +38,7 @@ private:
 
     std::chrono::seconds query_timeout;
 
-    websocket_stream_type stream;
+    ws_t stream;
 
     boost::asio::streambuf request_buffer;
 
